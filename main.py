@@ -599,9 +599,16 @@ investigations might help. Always recommend professional Phase I/II ESA review f
 
 if __name__ == "__main__":
     # Check if we're in production (Railway/Render) or local development
-    is_production = os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RENDER")
+    is_production = os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RENDER") or os.environ.get("PORT")
     debug_mode = not is_production and os.environ.get("FLASK_DEBUG", "true").lower() == "true"
     port = int(os.environ.get("PORT", 5000))
     
-    print(f"Starting server on port {port}, debug={debug_mode}")
-    app.run(host="0.0.0.0", port=port, debug=debug_mode)
+    print(f"=" * 50)
+    print(f"Starting Cobalt AI Due Diligence Server")
+    print(f"Port: {port}")
+    print(f"Debug: {debug_mode}")
+    print(f"Production: {is_production}")
+    print(f"=" * 50)
+    
+    # Use threaded=True for better performance in production
+    app.run(host="0.0.0.0", port=port, debug=debug_mode, threaded=True)

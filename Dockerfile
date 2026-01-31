@@ -15,12 +15,8 @@ RUN playwright install chromium
 # Copy the rest of the application
 COPY . .
 
-# Expose port
-EXPOSE 5000
-
-# Set environment variables
-ENV PORT=5000
+# Set environment variables - PORT will be overridden by Railway
 ENV PYTHONUNBUFFERED=1
 
-# Run the application
-CMD ["python", "main.py"]
+# Run the application - Railway provides PORT dynamically
+CMD python main.py
