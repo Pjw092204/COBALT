@@ -1,22 +1,20 @@
-# Use official Playwright image which has all dependencies pre-installed
+# Use official Playwright image
 FROM mcr.microsoft.com/playwright/python:v1.40.0-jammy
 
 WORKDIR /app
 
-# Copy requirements first for better caching
+# Copy requirements and install
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers
-RUN playwright install chromium
-
-# Copy the rest of the application
+# Copy application
 COPY . .
 
-# Set environment variables - PORT will be overridden by Railway
+# Make start script executable
+RUN chmod +x start.sh
+
+# Environment
 ENV PYTHONUNBUFFERED=1
 
-# Run the application - Railway provides PORT dynamically
-CMD python main.py
+# Use shell script to start
+CMD ["bash", "start.sh"]
