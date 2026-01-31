@@ -598,7 +598,10 @@ investigations might help. Always recommend professional Phase I/II ESA review f
 
 
 if __name__ == "__main__":
-    # Only run debug mode locally
-    debug_mode = os.environ.get("FLASK_DEBUG", "true").lower() == "true"
+    # Check if we're in production (Railway/Render) or local development
+    is_production = os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RENDER")
+    debug_mode = not is_production and os.environ.get("FLASK_DEBUG", "true").lower() == "true"
     port = int(os.environ.get("PORT", 5000))
+    
+    print(f"Starting server on port {port}, debug={debug_mode}")
     app.run(host="0.0.0.0", port=port, debug=debug_mode)
