@@ -3,7 +3,7 @@ services:
     name: cobalt-due-diligence
     env: docker
     dockerfilePath: ./Dockerfile
-    plan: starter
+    plan: free
     region: oregon
     envVars:
       - key: OPENROUTER_API_KEY
