@@ -25,7 +25,7 @@ def read_static(name):
         return f"// Error: {e}"
 
 def scrape_dnr_site(dsn):
-    """Scrape DNR BRRTS site using requests and BeautifulSoup"""
+    """Scrape DNR BRRTS site using Browserless.io API for JS rendering"""
     import requests
     from bs4 import BeautifulSoup
     
@@ -46,12 +46,76 @@ def scrape_dnr_site(dsn):
     risk_flags = {}
     documents = []
     
+    url = f"https://apps.dnr.wi.gov/rrbotw/botw-activity-detail?dsn={dsn}"
+    
+    # Try Browserless.io first (renders JavaScript)
+    browserless_key = os.environ.get("BROWSERLESS_API_KEY", "")
+    
+    if browserless_key:
+        try:
+            api_url = f"https://chrome.browserless.io/content?token={browserless_key}"
+            payload = {
+                "url": url,
+                "waitFor": 5000,
+                "gotoOptions": {"waitUntil": "networkidle2"}
+            }
+            resp = requests.post(api_url, json=payload, timeout=60)
+            if resp.status_code == 200:
+                html = resp.text
+                soup = BeautifulSoup(html, 'html.parser')
+                
+                # Extract from rendered page
+                inputs = soup.find_all('input', {'class': 'form-control'})
+                values = [inp.get('value', '').strip() for inp in inputs]
+                
+                field_map = {
+                    0: "activity_type", 1: "status", 2: "jurisdiction",
+                    3: "region", 4: "county", 5: "location_name",
+                    6: "address", 7: "municipality", 15: "start_date", 16: "end_date"
+                }
+                
+                for idx, key in field_map.items():
+                    if idx < len(values) and values[idx]:
+                        site_info[key] = values[idx]
+                
+                # Get activity number from header
+                page_text = soup.get_text()
+                header_match = re.search(r'(\d{2}-\d{2}-\d+)\s+([A-Z][A-Z0-9\s\'\-\.]+)', page_text)
+                if header_match:
+                    site_info["activity_number"] = header_match.group(1)
+                    if site_info["location_name"] == "Not available":
+                        site_info["location_name"] = header_match.group(2).strip()
+                
+                # Risk flags
+                risk_flags["status_label"] = site_info.get("status", "UNKNOWN").upper()
+                if site_info.get("activity_type", "").upper() == "LUST":
+                    risk_flags["petroleum"] = True
+                if "pfas" in page_text.lower():
+                    risk_flags["pfas"] = True
+                
+                # Documents
+                for link in soup.find_all('a', href=re.compile(r'download-document|docSeqNo')):
+                    href = link.get('href', '')
+                    if href:
+                        if not href.startswith('http'):
+                            href = f"https://apps.dnr.wi.gov{href}"
+                        seq_match = re.search(r'docSeqNo=(\d+)', href)
+                        seq_no = seq_match.group(1) if seq_match else str(len(documents))
+                        documents.append({
+                            "id": len(documents),
+                            "download_url": href,
+                            "category": "Site File",
+                            "name": f"Site File (ID: {seq_no})",
+                        })
+                
+                summary = f"{site_info.get('location_name', 'Site')} - {site_info.get('status', 'Unknown')}"
+                return site_info, risk_flags, documents, summary
+        except Exception as e:
+            print(f"Browserless error: {e}")
+    
+    # Fallback to basic requests (limited data)
     try:
-        # Fetch the main page
-        url = f"https://apps.dnr.wi.gov/rrbotw/botw-activity-detail?dsn={dsn}"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
+        headers = {'User-Agent': 'Mozilla/5.0'}
         resp = requests.get(url, headers=headers, timeout=30)
         
         if resp.status_code != 200:

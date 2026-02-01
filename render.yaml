@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: cobalt-ai-due-diligence
+    env: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11"
