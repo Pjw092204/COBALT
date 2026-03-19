@@ -56,6 +56,21 @@ python main.py
 
 **Note**: On Vercel (serverless), Playwright is not available. The app will fall back to basic HTML scraping which may have limited data extraction. For full functionality, run locally.
 
+## Deploying to Railway (Docker — recommended for production)
+
+This repo is configured for **Docker** on [Railway](https://railway.app) so **Playwright/Chromium** works (full BRRTS scraping).
+
+1. Push the repo to GitHub and create a **New Project** → **Deploy from GitHub repo**.
+2. Railway reads **`railway.toml`**: builder is **`DOCKERFILE`** (see [config as code](https://docs.railway.com/reference/config-as-code)).
+3. In the service **Variables** tab, add:
+   - **`OPENROUTER_API_KEY`** — your OpenRouter key ([openrouter.ai/keys](https://openrouter.ai/keys))
+4. **Networking** → **Generate Domain** for a public URL.
+5. First Docker build may take **3–5 minutes**.
+
+**Health check**: `GET /health` returns `{"status":"ok"}` for Railway’s deploy healthcheck.
+
+**Files involved**: `Dockerfile` (Playwright base image), `railway.toml`, `.dockerignore`.
+
 ## Environment Variables
 
 | Variable | Required | Description |

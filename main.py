@@ -12,7 +12,9 @@ import base64
 from flask import Flask, render_template, request, jsonify, session
 from dotenv import load_dotenv
 from brrts_client import fetch_site_data
-from document_scraper import extract_documents, extract_site_and_documents, get_document_summary
+from document_scraper import extract_documents, get_document_summary
+from playwright_wrapper import run_playwright_scrape
+from playwright_api import playwright_bp
 from filedownload import get_or_create_session, cleanup_session
 from pdf_extractor import (
     extract_document_text, 
@@ -43,6 +45,9 @@ app = Flask(
     static_folder=str(_APP_ROOT / "static"),
     static_url_path="/static",
 )
+
+# Isolated HTTP surface for Playwright-backed scraping (Docker/Railway)
+app.register_blueprint(playwright_bp)
 app.config['JSON_SORT_KEYS'] = False
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24).hex())
 
@@ -75,6 +80,12 @@ def add_header(response):
     return response
 
 
+@app.route("/health")
+def health():
+    """Lightweight check for Railway / load balancers (no template, no DB)."""
+    return jsonify({"status": "ok"}), 200
+
+
 @app.route("/")
 def landing():
     """Render the landing page."""
@@ -101,8 +112,8 @@ def api_analyze():
     dsn = digits_only[-6:] if len(digits_only) >= 6 else digits_only
     
     try:
-        # Use Playwright to scrape the actual DNR page
-        result = extract_site_and_documents(dsn)
+        # Playwright scrape (wrapped — see playwright_wrapper / playwright_api)
+        result = run_playwright_scrape(dsn)
         
         if result.get("error"):
             return jsonify({
@@ -139,8 +150,7 @@ def api_documents():
     if len(digits_only) >= 6:
         dsn = digits_only[-6:]
     
-    # Use comprehensive scraper
-    result = extract_site_and_documents(dsn)
+    result = run_playwright_scrape(dsn)
     
     if result.get("error"):
         return jsonify({

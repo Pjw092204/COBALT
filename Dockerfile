@@ -1,21 +1,24 @@
-# Use official Playwright Python image - includes Chromium + all system deps
+# COBALT on Railway — Playwright base image (Chromium + system libs pre-installed)
+# https://playwright.dev/python/docs/docker
+
 FROM mcr.microsoft.com/playwright/python:v1.48.0-noble
 
 WORKDIR /app
 
-# Install deps - pin Playwright to match Docker image's pre-installed browsers
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Dependencies; pin Playwright to match image browsers
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir -U "playwright==1.48.0"
 
-# Browsers are pre-installed in base image - no need for playwright install
-
-# Copy application code
 COPY . .
 
-# Railway sets PORT env var - main.py reads it
+# Railway injects PORT at runtime; default for local docker run
 ENV PORT=5000
 EXPOSE 5000
 
-# Run the Flask app
+# Bind 0.0.0.0 — required for Railway to reach the container
 CMD ["python", "main.py"]

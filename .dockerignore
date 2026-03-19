@@ -1,4 +1,4 @@
-# Don't copy these into the Docker image
+# Railway / Docker build context — keep image small and secrets out of the image
 .env
 .env.local
 .env.production
