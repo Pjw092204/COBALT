@@ -35,7 +35,14 @@ for p in _load_paths:
 else:
     load_dotenv()  # fallback to cwd
 
-app = Flask(__name__)
+# Absolute paths so templates/static work on Vercel (cwd may not be project root)
+_APP_ROOT = Path(__file__).resolve().parent
+app = Flask(
+    __name__,
+    template_folder=str(_APP_ROOT / "templates"),
+    static_folder=str(_APP_ROOT / "static"),
+    static_url_path="/static",
+)
 app.config['JSON_SORT_KEYS'] = False
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24).hex())
 
