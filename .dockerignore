@@ -1,0 +1,14 @@
+# Don't copy these into the Docker image
+.env
+.env.local
+.env.production
+.git
+__pycache__
+*.pyc
+venv
+.venv
+.vscode
+.idea
+*.log
+downloads
+*.pdf
