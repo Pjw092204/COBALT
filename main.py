@@ -51,6 +51,21 @@ app.register_blueprint(playwright_bp)
 app.config['JSON_SORT_KEYS'] = False
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24).hex())
 
+# Log env status at import (visible in Railway/Gunicorn logs)
+_api_ok = bool((os.environ.get("OPENROUTER_API_KEY") or "").strip())
+_secret_ok = bool((os.environ.get("FLASK_SECRET_KEY") or "").strip())
+print("=" * 50, flush=True)
+print("COBALT AI Due Diligence — loading", flush=True)
+print(
+    f"OPENROUTER_API_KEY: {'SET' if _api_ok else 'NOT SET (add in Railway → Variables)'}",
+    flush=True,
+)
+print(
+    f"FLASK_SECRET_KEY: {'SET' if _secret_ok else 'auto-generated each deploy (optional)'}",
+    flush=True,
+)
+print("=" * 50, flush=True)
+
 
 def get_openrouter_client():
     """Create OpenAI client configured for OpenRouter."""

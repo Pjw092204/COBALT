@@ -16,9 +16,11 @@ RUN pip install --no-cache-dir -r requirements.txt && \
 
 COPY . .
 
+RUN chmod +x start.sh
+
 # Railway injects PORT at runtime; default for local docker run
 ENV PORT=5000
 EXPOSE 5000
 
-# Bind 0.0.0.0 — required for Railway to reach the container
-CMD ["python", "main.py"]
+# Gunicorn WSGI (production) — not Flask dev server
+CMD ["sh", "start.sh"]
