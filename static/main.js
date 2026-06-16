@@ -14,6 +14,27 @@ function showError(msg) {
   banner.style.display = msg ? "block" : "none";
 }
 
+async function checkAiStatus() {
+  const banner = document.getElementById("ai-config-banner");
+  if (!banner) return;
+
+  try {
+    const resp = await fetch("/api/ai-status");
+    const data = await resp.json();
+    if (data.configured) {
+      banner.classList.remove("visible");
+      banner.textContent = "";
+      return;
+    }
+    banner.innerHTML =
+      "<strong>AI chat is not configured on this server.</strong> " +
+      escapeHtml(data.hint || "Set OPENROUTER_API_KEY and redeploy.");
+    banner.classList.add("visible");
+  } catch (err) {
+    console.warn("Could not check AI status", err);
+  }
+}
+
 function setAnalyzeLoading(isLoading) {
   const btn = document.getElementById("analyze-btn");
   if (!btn) return;
@@ -537,8 +558,9 @@ async function autoAnalyzeDocuments() {
     const aiData = await aiResp.json();
     
     if (!aiResp.ok) {
-      setAutoAnalyzeLoading(false, `Extracted ${extractSummary.successful || 0} documents. AI summary unavailable.`);
-      // Still show extraction results even if AI fails
+      const errMsg = aiData.error || "AI summary unavailable.";
+      setAutoAnalyzeLoading(false, `Extracted ${extractSummary.successful || 0} documents. ${errMsg}`);
+      showError(errMsg);
       return;
     }
     
@@ -666,6 +688,13 @@ async function sendMessage() {
 
     const data = await resp.json();
     
+    if (!resp.ok) {
+      const errMsg = data.error || "AI request failed.";
+      appendChatMessage(errMsg, "ai");
+      showError(errMsg);
+      return;
+    }
+    
     if (data.session_id) {
       sessionId = data.session_id;
     }
@@ -692,6 +721,8 @@ async function sendMessage() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  checkAiStatus();
+
   const form = document.getElementById("site-form");
   if (form) {
     form.addEventListener("submit", (e) => {

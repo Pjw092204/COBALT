@@ -32,10 +32,9 @@ _load_paths = [
 ]
 for p in _load_paths:
     if p.exists():
-        load_dotenv(p)
-        break
+        load_dotenv(p, override=False)
 else:
-    load_dotenv()  # fallback to cwd
+    load_dotenv(override=False)
 
 # Absolute paths so templates/static work on Vercel (cwd may not be project root)
 _APP_ROOT = Path(__file__).resolve().parent
@@ -65,6 +64,24 @@ print(
     flush=True,
 )
 print("=" * 50, flush=True)
+
+
+def is_openrouter_configured() -> bool:
+    return bool((os.environ.get("OPENROUTER_API_KEY") or "").strip())
+
+
+def ai_config_hint() -> str:
+    on_railway = bool(
+        os.environ.get("RAILWAY_ENVIRONMENT")
+        or os.environ.get("RAILWAY_PUBLIC_DOMAIN")
+        or os.environ.get("RAILWAY_SERVICE_NAME")
+    )
+    if on_railway:
+        return (
+            "Add OPENROUTER_API_KEY in Railway → your COBALT service → Variables "
+            "(key from https://openrouter.ai/keys), then wait for redeploy."
+        )
+    return "Add OPENROUTER_API_KEY to your .env file and restart the server."
 
 
 def get_openrouter_client():
@@ -98,7 +115,17 @@ def add_header(response):
 @app.route("/health")
 def health():
     """Lightweight check for Railway / load balancers (no template, no DB)."""
-    return jsonify({"status": "ok"}), 200
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/ai-status")
+def api_ai_status():
+    """Whether OpenRouter is configured (for UI banner; never exposes the key)."""
+    configured = is_openrouter_configured()
+    return jsonify({
+        "configured": configured,
+        "hint": None if configured else ai_config_hint(),
+    }), 200
 
 
 @app.route("/")
@@ -231,7 +258,10 @@ def api_summarize_documents():
     
     client = get_openrouter_client()
     if not client:
-        return jsonify({"error": "OPENROUTER_API_KEY not configured. Add it to your .env file."}), 400
+        return jsonify({
+            "error": f"AI is not configured. {ai_config_hint()}",
+            "error_code": "OPENROUTER_API_KEY_MISSING",
+        }), 503
     
     try:
         site_info = site_data.get("site_info", {})
@@ -370,7 +400,10 @@ def api_analyze_with_documents():
     
     client = get_openrouter_client()
     if not client:
-        return jsonify({"error": "OPENROUTER_API_KEY not set in environment."}), 400
+        return jsonify({
+            "error": f"AI is not configured. {ai_config_hint()}",
+            "error_code": "OPENROUTER_API_KEY_MISSING",
+        }), 503
     
     # Extract DSN from BRRTS ID
     digits_only = ''.join(c for c in brrts_id if c.isdigit())
@@ -531,25 +564,10 @@ def api_chat():
     client = get_openrouter_client()
     
     if not client:
-        site_info = site_data.get("site_info") or {}
-        activity = site_info.get("activity_number", "(unknown)")
-        status = site_info.get("status", "unknown")
-        
-        answer = (
-            f"Site {activity} has status: {status}. "
-            f"You selected {len(selected_docs)} document(s). "
-            "AI analysis requires OPENROUTER_API_KEY in .env file.\n\n"
-            f"Your question: {question}"
-        )
-        
         return jsonify({
-            "answer": answer,
-            "session_id": session_id,
-            "history": history + [
-                {"role": "user", "content": question},
-                {"role": "assistant", "content": answer}
-            ]
-        })
+            "error": f"AI is not configured. {ai_config_hint()}",
+            "error_code": "OPENROUTER_API_KEY_MISSING",
+        }), 503
     
     try:
         site_info = site_data.get("site_info") or {}
@@ -642,7 +660,7 @@ investigations might help. Always recommend professional Phase I/II ESA review f
         if "401" in err_str or "user not found" in err_str or "invalid" in err_str:
             error_msg = (
                 "OpenRouter API key is invalid or expired. "
-                "Please check your OPENROUTER_API_KEY in the .env file. "
+                f"{ai_config_hint()} "
                 "Get a valid key at https://openrouter.ai/keys"
             )
         elif "402" in err_str or "insufficient credits" in err_str:

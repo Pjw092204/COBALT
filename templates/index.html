@@ -319,6 +319,23 @@
       opacity: 0.6;
       cursor: wait;
     }
+    .ai-config-banner {
+      display: none;
+      margin-bottom: 1rem;
+      padding: 0.85rem 1rem;
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 0.5rem;
+      font-size: 0.88rem;
+      color: #92400e;
+      line-height: 1.5;
+    }
+    .ai-config-banner.visible {
+      display: block;
+    }
+    .ai-config-banner strong {
+      color: #78350f;
+    }
     .hidden {
       display: none !important;
     }
@@ -484,6 +501,7 @@
 
     <section class="card" id="chat-section">
       <h2>Ask Questions About Selected Documents</h2>
+      <div id="ai-config-banner" class="ai-config-banner" role="alert"></div>
       <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 1rem;">
         Select documents above, then ask questions. The AI will analyze them in context.
       </p>
